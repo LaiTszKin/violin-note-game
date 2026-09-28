@@ -4,7 +4,13 @@
 // 流程：抽題（session）→ 作答（judging）→ 播該音（audio）→ 回饋 → 答對自動前進（~900ms）
 // ／答錯等「繼續」→ 全部答完（含錯題重出）→ 結算 → replay 開新局。
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import { Fingerboard } from "@/components/Fingerboard";
 import { LetterPad } from "@/components/LetterPad";
@@ -162,7 +168,10 @@ export function GameScreen({ config }: GameScreenProps) {
           ← 返回
         </Link>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <span data-testid="progress" style={CHIP}>{`${answeredFresh}/${ROUND_SIZE}`}</span>
+          <span
+            data-testid="progress"
+            style={CHIP}
+          >{`${answeredFresh}/${ROUND_SIZE}`}</span>
           <span data-testid="streak" style={CHIP}>{`連擊 ${streak}`}</span>
         </div>
         <button
@@ -185,30 +194,57 @@ export function GameScreen({ config }: GameScreenProps) {
           <h2 style={{ margin: "0 0 6px", fontSize: 26 }}>今局結果</h2>
           <p
             data-testid="final-score"
-            style={{ margin: "6px 0", fontSize: "clamp(44px, 8vw, 64px)", fontWeight: 800 }}
+            style={{
+              margin: "6px 0",
+              fontSize: "clamp(44px, 8vw, 64px)",
+              fontWeight: 800,
+            }}
           >
             {`${session.score()}/${ROUND_SIZE}`}
           </p>
           <p style={{ margin: "2px 0 18px", fontSize: 24, fontWeight: 700 }}>
             <span aria-hidden="true">★ </span>
             星星{" "}
-            <span data-testid="final-stars" style={{ fontVariantNumeric: "tabular-nums" }}>
+            <span
+              data-testid="final-stars"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
               {session.stars()}
             </span>
           </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              justifyContent: "center",
+              flexWrap: "wrap",
+            }}
+          >
             <button
               type="button"
               data-testid="replay"
               onClick={newRound}
-              style={{ ...CHIP, minHeight: 60, padding: "12px 28px", fontSize: 22, background: "#f59e0b", borderColor: "#b45309", color: "#ffffff" }}
+              style={{
+                ...CHIP,
+                minHeight: 60,
+                padding: "12px 28px",
+                fontSize: 22,
+                background: "#f59e0b",
+                borderColor: "#b45309",
+                color: "#ffffff",
+              }}
             >
               再玩一次
             </button>
             <Link
               data-testid="back-home"
               href="/"
-              style={{ ...CHIP, minHeight: 60, padding: "12px 28px", fontSize: 22 }}
+              style={{
+                ...CHIP,
+                minHeight: 60,
+                padding: "12px 28px",
+                fontSize: 22,
+              }}
             >
               返回首頁
             </Link>
@@ -218,7 +254,11 @@ export function GameScreen({ config }: GameScreenProps) {
         <>
           <section style={BOARD}>
             {displayNote === null ? (
-              <p style={{ textAlign: "center", fontSize: 22, margin: "60px 0" }}>準備中…</p>
+              <p
+                style={{ textAlign: "center", fontSize: 22, margin: "60px 0" }}
+              >
+                準備中…
+              </p>
             ) : (
               <Staff noteId={displayNote} />
             )}
@@ -235,14 +275,22 @@ export function GameScreen({ config }: GameScreenProps) {
           {session === null ? null : mode === "letter" ? (
             <LetterPad
               disabled={answering}
-              correctLetter={feedback?.state === "wrong" ? letterOf(feedback.noteId) : null}
+              correctLetter={
+                feedback?.state === "wrong" ? letterOf(feedback.noteId) : null
+              }
               onPick={(letter) => submit({ kind: "letter", letter })}
             />
           ) : (
             <Fingerboard
               disabled={answering}
-              correctCells={feedback?.state === "wrong" ? placementsOf(feedback.noteId) : null}
-              onPick={(string, finger) => submit({ kind: "position", string, finger })}
+              correctCells={
+                feedback?.state === "wrong"
+                  ? placementsOf(feedback.noteId)
+                  : null
+              }
+              onPick={(string, finger) =>
+                submit({ kind: "position", string, finger })
+              }
             />
           )}
         </>

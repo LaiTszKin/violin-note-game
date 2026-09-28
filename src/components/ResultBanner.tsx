@@ -8,7 +8,11 @@ export interface ResultBannerProps {
   onContinue: () => void;
 }
 
-export function ResultBanner({ state, answerLine, onContinue }: ResultBannerProps) {
+export function ResultBanner({
+  state,
+  answerLine,
+  onContinue,
+}: ResultBannerProps) {
   const correct = state === "correct";
   const card: CSSProperties = {
     display: "flex",
@@ -26,7 +30,13 @@ export function ResultBanner({ state, answerLine, onContinue }: ResultBannerProp
   };
 
   return (
-    <div data-testid="feedback" data-state={state} role="status" aria-live="polite" style={card}>
+    <div
+      data-testid="feedback"
+      data-state={state}
+      role="status"
+      aria-live="polite"
+      style={card}
+    >
       <p
         style={{
           margin: 0,

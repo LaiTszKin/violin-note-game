@@ -7,7 +7,11 @@ export interface LetterPadProps {
 
 const LETTERS = ["A", "B", "C", "D", "E", "F", "G"] as const;
 
-export function LetterPad({ disabled = false, correctLetter = null, onPick }: LetterPadProps) {
+export function LetterPad({
+  disabled = false,
+  correctLetter = null,
+  onPick,
+}: LetterPadProps) {
   return (
     <div
       style={{
