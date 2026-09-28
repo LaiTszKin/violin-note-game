@@ -51,6 +51,56 @@ test("NAV_START_SCREEN: 開始頁齊料、模式 aria-pressed 切換、關卡掣
   expect(errors, "開始頁不得有 JS 錯誤").toEqual([]);
 });
 
+// RA-6：/play 兩 viewport 皆不得水平溢出（GameScreen minWidth／overflowX 突變靠呢度捉）。
+type Viewport = { width: number; height: number };
+const PLAY_VIEWPORTS: readonly Viewport[] = [
+  { width: 1280, height: 720 }, // desktop chrome
+  { width: 810, height: 1080 }, // tablet（iPad gen 7）
+];
+
+test("NO_HORIZONTAL_OVERFLOW: /play（letter／position）喺 desktop 1280×720 同 tablet 810×1080 皆無水平溢出", async ({
+  page,
+}) => {
+  for (const mode of ["letter", "position"]) {
+    await page.goto(`/play?mode=${mode}&level=G`);
+    await expect(page.getByTestId("play-screen")).toBeVisible();
+    for (const viewport of PLAY_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      const metrics = await page.evaluate(() => ({
+        doc: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+        inner: window.innerWidth,
+      }));
+      const label = `/${mode} @ ${viewport.width}×${viewport.height}`;
+      expect(
+        metrics.inner,
+        `${label} innerWidth 不應超 viewport`,
+      ).toBeLessThanOrEqual(viewport.width);
+      expect(
+        metrics.doc,
+        `${label} documentElement 不得水平溢出`,
+      ).toBeLessThanOrEqual(metrics.inner + 1);
+      expect(metrics.body, `${label} body 不得水平溢出`).toBeLessThanOrEqual(
+        metrics.inner + 1,
+      );
+    }
+  }
+});
+
+// D-12：back 掣（遊戲頁返回）可見、指回 "/"，點擊一次驗證導航。
+test("NAV_BACK: back 掣可見、href=/、點擊一次返到開始頁", async ({ page }) => {
+  await page.goto("/play?mode=letter&level=G");
+  await expect(page.getByTestId("play-screen")).toBeVisible();
+  const back = page.getByTestId("back");
+  await expect(back).toBeVisible();
+  await expect(back).toHaveAttribute("href", "/");
+  await back.click();
+  await expect(page).toHaveURL(
+    (url) => url.pathname === "/" && url.search === "",
+  );
+  await expect(page.getByTestId("start-screen")).toBeVisible();
+});
+
 test("NAV_START_SCREEN: 揀模式＋關卡→/play 帶正確參數；遊戲頁載入", async ({
   page,
 }) => {

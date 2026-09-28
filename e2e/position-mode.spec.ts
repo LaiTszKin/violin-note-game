@@ -139,3 +139,62 @@ test("POSITION_MODE_FLOW: 答錯→顯示正解文字＋正確格高亮＋contin
   await page.getByTestId("continue").click();
   await expect(page.getByTestId("feedback")).toBeHidden();
 });
+
+// RA-5：TAP_TARGET_SIZE——20 格全部量度（唔止當前題目嘅格）。
+test("TAP_TARGET_SIZE: position 模式 20 格全部 ≥48×48", async ({ page }) => {
+  await page.goto("/play?mode=position&level=G");
+  await expect(page.getByTestId("play-screen")).toBeVisible();
+  await expect(page.locator('[data-testid^="cell-"]')).toHaveCount(20);
+  for (const [s, f] of ALL_CELLS) {
+    const el = page.getByTestId(`cell-${s}-${f}`);
+    await expect(el).toBeVisible();
+    const box = await el.boundingBox();
+    expect(box, `cell-${s}-${f} 必須可見`).not.toBeNull();
+    expect(box!.width, `cell-${s}-${f} 闊度`).toBeGreaterThanOrEqual(48);
+    expect(box!.height, `cell-${s}-${f} 高度`).toBeGreaterThanOrEqual(48);
+  }
+});
+
+// RA-6：真實玩法流程掛 console 監聽——console error／pageerror 零輸出。
+test("NO_HORIZONTAL_OVERFLOW: position 模式真實玩法流程零 console error／pageerror", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(`console.error: ${msg.text()}`);
+  });
+  page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+
+  await page.goto("/play?mode=position&level=G");
+  await expect(page.getByTestId("play-screen")).toBeVisible();
+
+  // 真實玩法：先答錯一格（正解格高亮＋continue），再答對下一題。
+  const note = await currentNote(page);
+  const valid = PLACEMENTS[note];
+  const wrong = ALL_CELLS.find(
+    ([s, f]) => !valid.some(([vs, vf]) => vs === s && vf === f),
+  )!;
+  await page.getByTestId(`cell-${wrong[0]}-${wrong[1]}`).click();
+  await expect(page.getByTestId("feedback")).toHaveAttribute(
+    "data-state",
+    "wrong",
+  );
+  await expect(page.getByTestId("continue")).toBeVisible();
+  await page.getByTestId("continue").click();
+  await expect(page.getByTestId("feedback")).toBeHidden();
+  const nextNote = await currentNote(page);
+  const [s, f] = PLACEMENTS[nextNote][0];
+  await page.getByTestId(`cell-${s}-${f}`).click();
+  await expect(page.getByTestId("feedback")).toHaveAttribute(
+    "data-state",
+    "correct",
+  );
+  await expect(page.getByTestId("feedback")).toBeHidden();
+  await expect(page.getByTestId("progress")).toHaveText("2/10");
+
+  const noOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+  );
+  expect(noOverflow, "遊戲頁不得水平滾動").toBe(true);
+  expect(errors, "流程中不得有 console error／pageerror").toEqual([]);
+});

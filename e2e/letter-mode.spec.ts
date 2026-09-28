@@ -132,8 +132,137 @@ test("LETTER_MODE_FLOW: 全對 10 題→10/10；再玩一次重設新局", async
   await expect(page.getByTestId("summary")).toBeVisible();
   await expect(page.getByTestId("final-score")).toHaveText("10/10");
   await expect(page.getByTestId("final-stars")).toHaveText("10");
+  // D-12：結算畫面備有 back-home 掣（返首頁）——可見且指向 "/"。
+  const backHome = page.getByTestId("back-home");
+  await expect(backHome).toBeVisible();
+  await expect(backHome).toHaveAttribute("href", "/");
   await page.getByTestId("replay").click();
   await expect(page.getByTestId("summary")).toBeHidden();
   await expect(page.getByTestId("progress")).toHaveText("0/10");
   await expect(page.getByTestId("staff")).toBeVisible();
+});
+
+const ALL_LETTERS = ["A", "B", "C", "D", "E", "F", "G"];
+
+// RA-5：TAP_TARGET_SIZE——七粒答案掣全部量度（minHeight:0／height:30 突變要喺度被捉）。
+test("TAP_TARGET_SIZE: letter 模式七粒答案掣全部 ≥48×48", async ({ page }) => {
+  await page.goto("/play?mode=letter&level=G");
+  await expect(page.getByTestId("play-screen")).toBeVisible();
+  await expect(page.locator('[data-testid^="letter-"]')).toHaveCount(7);
+  for (const letter of ALL_LETTERS) {
+    const el = page.getByTestId(`letter-${letter}`);
+    await expect(el).toBeVisible();
+    const box = await el.boundingBox();
+    expect(box, `letter-${letter} 必須可見`).not.toBeNull();
+    expect(box!.width, `letter-${letter} 闊度`).toBeGreaterThanOrEqual(48);
+    expect(box!.height, `letter-${letter} 高度`).toBeGreaterThanOrEqual(48);
+  }
+});
+
+// RA-6：真實玩法流程掛 console 監聽——console error／pageerror 零輸出（submit 亂 log 要在此被捉）。
+test("NO_HORIZONTAL_OVERFLOW: letter 模式真實玩法流程零 console error／pageerror", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(`console.error: ${msg.text()}`);
+  });
+  page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
+
+  await page.goto("/play?mode=letter&level=G");
+  await expect(page.getByTestId("play-screen")).toBeVisible();
+
+  // 真實玩法：先答錯一題（正解行＋continue），再答對一題。
+  const note = await currentNote(page);
+  const wrongLetter = LETTER[note] === "A" ? "B" : "A";
+  await page.getByTestId(`letter-${wrongLetter}`).click();
+  await expect(page.getByTestId("feedback")).toHaveAttribute(
+    "data-state",
+    "wrong",
+  );
+  await page.getByTestId("continue").click();
+  await expect(page.getByTestId("feedback")).toBeHidden();
+  await answerCorrectly(page);
+  await expect(page.getByTestId("progress")).toHaveText("2/10");
+
+  const noOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+  );
+  expect(noOverflow, "遊戲頁不得水平滾動").toBe(true);
+  expect(errors, "流程中不得有 console error／pageerror").toEqual([]);
+});
+
+// RA-7：假 WebAudio（起振記錄喺 window.__osc）——驗 mute 掣 UI 真係接到 player。
+// 注意：此函數會原樣送進 page context，唔可以引用模組作用域嘅任何變數。
+function installFakeAudioContext(): void {
+  const scope = window as unknown as {
+    __osc: number[];
+    AudioContext: unknown;
+  };
+  scope.__osc = [];
+  class FakeOscillator {
+    type = "sine";
+    frequency = { value: 0 };
+    connect() {
+      return this;
+    }
+    start() {
+      scope.__osc.push(this.frequency.value);
+    }
+    stop() {}
+  }
+  class FakeGain {
+    gain = { value: 0 };
+    connect() {
+      return this;
+    }
+  }
+  class FakeAudioContext {
+    currentTime = 0;
+    destination = {};
+    state = "running";
+    resume() {
+      return Promise.resolve();
+    }
+    createOscillator() {
+      return new FakeOscillator();
+    }
+    createGain() {
+      return new FakeGain();
+    }
+  }
+  scope.AudioContext = FakeAudioContext;
+}
+
+/** 讀假 AudioContext 記低嘅起振次數。 */
+async function oscillatorStartCount(page: Page): Promise<number> {
+  return page.evaluate(
+    () => (window as unknown as { __osc?: number[] }).__osc?.length ?? 0,
+  );
+}
+
+test("MUTE_WIRING: 靜音時答題零起振；解除靜音後答題有新起振", async ({
+  page,
+}) => {
+  await page.addInitScript(installFakeAudioContext);
+  await page.goto("/play?mode=letter&level=G");
+  await expect(page.getByTestId("play-screen")).toBeVisible();
+
+  const mute = page.getByTestId("mute-toggle");
+  await expect(mute).toHaveAttribute("aria-pressed", "false");
+  expect(await oscillatorStartCount(page), "未答題前不應起振").toBe(0);
+
+  await mute.click();
+  await expect(mute).toHaveAttribute("aria-pressed", "true");
+  await answerCorrectly(page);
+  expect(await oscillatorStartCount(page), "靜音期間答題不得起振").toBe(0);
+
+  await mute.click();
+  await expect(mute).toHaveAttribute("aria-pressed", "false");
+  await answerCorrectly(page);
+  await expect
+    .poll(() => oscillatorStartCount(page), {
+      message: "解除靜音後答題要起振",
+    })
+    .toBeGreaterThan(0);
 });
