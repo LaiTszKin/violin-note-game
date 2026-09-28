@@ -1,0 +1,10 @@
+# 機器生成 / 不納入 format 管轄
+.next/
+out/
+build/
+node_modules/
+package-lock.json
+next-env.d.ts
+AGENTS.md
+CLAUDE.md
+.plan/
