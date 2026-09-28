@@ -1,0 +1,260 @@
+/* 全局樣式：童趣風（厚邊框＋糖果色），大字、大按鈕、平板優先。
+   規格：.plan/28-09-2026/violin-note-game/PRD.md REQ-ui-2（≥48px 觸控、無水平滾動）。 */
+
+:root {
+  --ink: #2f2a45;
+  --paper: #fffdf7;
+  --sky: #a8dcff;
+  --sun: #ffd166;
+  --mint: #b8f0c9;
+  --coral: #ffb4a2;
+  --grape: #d9c8ff;
+  --muted: #8b86a3;
+  --font-stack:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC",
+    "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-stack);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(168, 220, 255, 0.55), transparent 42%),
+    radial-gradient(circle at 88% 4%, rgba(255, 209, 102, 0.45), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(184, 240, 201, 0.5), transparent 55%);
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+/* ---------- 開始頁 ---------- */
+
+.start-screen {
+  width: 100%;
+  max-width: 46rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: clamp(1rem, 3.5vw, 2rem) clamp(0.85rem, 3vw, 1.75rem)
+    clamp(1.5rem, 4vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.85rem, 2.5vw, 1.25rem);
+}
+
+.start-screen__header {
+  text-align: center;
+}
+
+.start-screen__mascot {
+  margin: 0;
+  font-size: clamp(2.4rem, 9vw, 3.4rem);
+  line-height: 1;
+}
+
+.start-screen__title {
+  margin: 0.25rem 0 0;
+  font-size: clamp(2rem, 7.5vw, 3.1rem);
+  letter-spacing: 0.06em;
+}
+
+.start-screen__subtitle {
+  margin: 0.4rem 0 0;
+  font-size: clamp(1rem, 3.2vw, 1.3rem);
+  color: #5c5578;
+}
+
+.panel {
+  background: #ffffff;
+  border: 4px solid var(--ink);
+  border-radius: 1.5rem;
+  box-shadow: 0 6px 0 rgba(47, 42, 69, 0.25);
+  padding: clamp(0.85rem, 3vw, 1.25rem);
+}
+
+.panel__title {
+  margin: 0 0 0.75rem;
+  font-size: clamp(1.15rem, 3.6vw, 1.5rem);
+}
+
+.panel__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.6rem, 2.5vw, 1rem);
+}
+
+/* 模式掣：aria-pressed 反映選中。 */
+.mode-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  flex: 1 1 8rem;
+  min-height: 4.5rem;
+  padding: 0.6rem 0.9rem;
+  border: 4px solid var(--ink);
+  border-radius: 1.1rem;
+  background: var(--sky);
+  box-shadow: 0 5px 0 var(--ink);
+  font-family: inherit;
+  font-size: clamp(1.15rem, 4vw, 1.5rem);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.mode-btn__hint {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #52506b;
+}
+
+.mode-btn[aria-pressed="true"] {
+  background: var(--sun);
+  transform: translateY(2px);
+  box-shadow: 0 3px 0 var(--ink);
+}
+
+.mode-btn[aria-pressed="true"]::after {
+  content: "✓";
+  position: absolute;
+  top: 0.35rem;
+  right: 0.6rem;
+  font-size: 1.3rem;
+}
+
+/* 關卡掣：每個 ≥48×48px。 */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: clamp(0.6rem, 2.5vw, 1rem);
+}
+
+.level-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 3rem;
+  min-height: 5rem;
+  padding: 0.6rem 0.5rem;
+  border: 4px solid var(--ink);
+  border-radius: 1.1rem;
+  background: var(--mint);
+  box-shadow: 0 5px 0 var(--ink);
+  font-family: inherit;
+  font-size: clamp(1.2rem, 4.2vw, 1.5rem);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.level-btn__hint {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #52506b;
+}
+
+.level-btn[data-testid="level-mixed"] {
+  background: var(--grape);
+}
+
+.mode-btn:active,
+.level-btn:active,
+.start-custom-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+/* 自選弦：真 checkbox。 */
+.custom-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.5rem, 2.5vw, 0.9rem);
+  margin-bottom: clamp(0.7rem, 2.5vw, 1rem);
+}
+
+.custom-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 10rem;
+  min-height: 3.5rem;
+  padding: 0.35rem 0.7rem;
+  border: 3px dashed var(--ink);
+  border-radius: 1rem;
+  background: #f4fbff;
+  cursor: pointer;
+}
+
+.custom-option__box {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  accent-color: #ff7a59;
+  cursor: pointer;
+}
+
+.custom-option__label {
+  font-size: clamp(1.05rem, 3.6vw, 1.3rem);
+  font-weight: 700;
+}
+
+.start-custom-btn {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.7rem 1rem;
+  border: 4px solid var(--ink);
+  border-radius: 1.2rem;
+  background: var(--coral);
+  box-shadow: 0 5px 0 var(--ink);
+  font-family: inherit;
+  font-size: clamp(1.2rem, 4.2vw, 1.6rem);
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.start-custom-btn:disabled {
+  background: #ececf1;
+  color: var(--muted);
+  border-color: #b6b2c6;
+  box-shadow: 0 5px 0 #d8d6e2;
+  cursor: not-allowed;
+}
+
+.custom-hint {
+  margin: 0.6rem 0 0;
+  font-size: 1rem;
+  color: #5c5578;
+  min-height: 1.4em;
+}
+
+:focus-visible {
+  outline: 4px solid #ff7a59;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
