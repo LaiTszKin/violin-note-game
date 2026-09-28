@@ -63,3 +63,15 @@ export function createBag<T>(items: readonly T[], rng: Rng): Bag<T> {
     },
   };
 }
+
+// 可重播隨機源：同一 seed ⇒ 同一序列。供 server 抽種子、兩端以純函數重建同一題序。
+// mulberry32：32-bit 狀態，質量足夠遊戲抽題（非加密用途）。
+export function rngFromSeed(seed: number): Rng {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), state | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}

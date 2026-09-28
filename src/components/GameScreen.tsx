@@ -3,10 +3,12 @@
 // 遊戲頁：狀態機編排（session × judging × audio）。REQ-ui-1 之畫面與流程契約。
 // 流程：抽題（session）→ 作答（judging）→ 播該音（audio）→ 回饋 → 答對自動前進（~900ms）
 // ／答錯等「繼續」→ 全部答完（含錯題重出）→ 結算 → replay 開新局。
+// 題序由 seed（server 每請求抽出）以純函數重建：SSR 與 hydration 得出同一題，毋須 effect 設 state。
 import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -21,13 +23,19 @@ import { isCorrect, type Answer } from "@/lib/judging";
 import { poolFor, type PlayConfig } from "@/lib/levels";
 import { answerLine, letterOf, placementsOf, type NoteId } from "@/lib/notes";
 import { createSession, ROUND_SIZE, type Session } from "@/lib/session";
+import { rngFromSeed } from "@/lib/shuffle";
 
 export interface GameScreenProps {
   config: PlayConfig;
+  /** 由 /play（server）為每一請求抽出；配合 round 決定本局題序（純函數，SSR／hydration 一致）。 */
+  seed: number;
 }
 
 /** 答對後自動前進之延遲（測試要捕捉得到回饋）。 */
 const AUTO_ADVANCE_MS = 900;
+
+/** 換局時種子嘅推進（黃金比例常數；相鄰 round 嘅題序唔會相關）。 */
+const SESSION_SEED_STEP = 0x9e3779b9;
 
 interface Feedback {
   state: "correct" | "wrong";
@@ -91,12 +99,27 @@ const BOARD: CSSProperties = {
   background: "#ffffff",
 };
 
-export function GameScreen({ config }: GameScreenProps) {
+/** (seed, round) → 本局種子；同一輸入必得同一題序。 */
+function sessionSeedOf(seed: number, round: number): number {
+  return (seed + Math.imul(round, SESSION_SEED_STEP)) >>> 0;
+}
+
+export function GameScreen({ config, seed }: GameScreenProps) {
   const { mode, level, strings } = config;
-  const [session, setSession] = useState<Session | null>(null);
+  const [round, setRound] = useState(0);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [muted, setMuted] = useState(false);
   const playerRef = useRef<NotePlayer | null>(null);
+
+  // 題序＝(level, strings, seed, round) 嘅純函數：唔喺 render 期間掂非決定性來源。
+  const session: Session = useMemo(
+    () =>
+      createSession(
+        poolFor(level, strings),
+        rngFromSeed(sessionSeedOf(seed, round)),
+      ),
+    [level, strings, seed, round],
+  );
 
   // 播放器：第一次用先建立（唔喺 render 期間掂 browser API；mute 狀態由 player 記住）。
   const player = useCallback((): NotePlayer => {
@@ -106,21 +129,15 @@ export function GameScreen({ config }: GameScreenProps) {
     return playerRef.current;
   }, []);
 
-  // 抽題只喺客戶端做：rng 非決定性，必須避開 prerender／hydrate 之譜面差異。
-  useEffect(() => {
-    setSession(createSession(poolFor(level, strings), Math.random));
-    setFeedback(null);
-  }, [level, strings]);
-
   const newRound = useCallback(() => {
-    setSession(createSession(poolFor(level, strings), Math.random));
     setFeedback(null);
-  }, [level, strings]);
+    setRound((r) => r + 1);
+  }, []);
 
   // 作答：判定 → 記分 → 播該音 → 出回饋。（回饋未完前 submit 無效＝防重複作答。）
   const submit = useCallback(
     (answer: Answer) => {
-      if (session === null || feedback !== null) return;
+      if (feedback !== null) return;
       const question = session.current();
       if (question === null) return;
       const correct = isCorrect(question.noteId, answer);
@@ -147,13 +164,13 @@ export function GameScreen({ config }: GameScreenProps) {
     return () => clearTimeout(timer);
   }, [feedback, advance]);
 
-  const question = session === null ? null : session.current();
+  const question = session.current();
   const displayNote: NoteId | null =
     feedback !== null ? feedback.noteId : (question?.noteId ?? null);
-  const answeredFresh = session?.progress().answeredFresh ?? 0;
-  const streak = session?.streak() ?? 0;
+  const answeredFresh = session.progress().answeredFresh;
+  const streak = session.streak();
   const answering = feedback !== null; // 已作答：控件鎖住至下一題
-  const finished = session !== null && feedback === null && session.finished();
+  const finished = feedback === null && session.finished();
 
   const toggleMute = useCallback(() => {
     const next = !muted;
@@ -186,7 +203,7 @@ export function GameScreen({ config }: GameScreenProps) {
         </button>
       </header>
 
-      {finished && session !== null ? (
+      {finished ? (
         <section
           data-testid="summary"
           style={{ ...BOARD, padding: "24px 20px", textAlign: "center" }}
@@ -272,7 +289,7 @@ export function GameScreen({ config }: GameScreenProps) {
             />
           )}
 
-          {session === null ? null : mode === "letter" ? (
+          {mode === "letter" ? (
             <LetterPad
               disabled={answering}
               correctLetter={
