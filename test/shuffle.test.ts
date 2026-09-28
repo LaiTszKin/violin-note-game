@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
-import { createBag } from "../src/lib/shuffle";
+import { createBag, rngFromSeed } from "../src/lib/shuffle";
 
 // 測試側自有 rng（mulberry32）——對「袋」而言係可控輸入，屬 oracle 一部分
 function makeRng(seed: number): () => number {
@@ -81,5 +81,44 @@ test("NO_ADJACENT_REPEAT: 連續抽取不得相同（含跨輪邊界；pool>1）
       },
     ),
     { numRuns: 150 },
+  );
+});
+
+// RA-1（Review A）：袋序必須真由 rng 決定。「即使完全唔用 rng」（例：恆回題池原序）之實作，
+// 仍滿足 BAG_COVERS_POOL／NO_ADJACENT_REPEAT（池本身已互異且無重複），故需要一條
+// 只有 rng-驅動實作才滿足之鑑別用例：固定池（≥3 個互異元素）＋固定 seeds（src 之
+// rngFromSeed），首輪排列集合必須 >1；seed 忽略／常數排列之突變必然死亡。
+test("BAG_ORDER_FROM_RNG: 首輪排列由 seed 決定（固定池＋固定 seeds ⇒ ≥2 個唔同排列）", () => {
+  const POOL = ["G3", "D4", "A4", "E5"]; // ≥3 個互異元素
+  const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+
+  const firstRoundOf = (seed: number): string[] => {
+    const bag = createBag(POOL, rngFromSeed(seed));
+    return Array.from({ length: POOL.length }, () => bag.next());
+  };
+
+  const rounds = SEEDS.map(firstRoundOf);
+  const rendered = rounds.map((r) => r.join(">"));
+
+  // 前提：首輪仍係題池之全排列（袋語意；唔係就唔係「袋」）
+  for (const r of rounds) {
+    assert.deepEqual([...r].sort(), [...POOL].sort(), "首輪須為題池之全排列");
+  }
+  // 核心鑑別：完全唔用 rng 之突變（恆回池原序或任何常數排列）⇒ 只剩 1 個排列，必死
+  const distinct = new Set(rendered);
+  assert.ok(
+    distinct.size >= 2,
+    `首輪排列須隨 seed 改變（rng-忽略之實作必死）；實測 ${JSON.stringify([...distinct])}`,
+  );
+  // 另殺「恆回輸入序」類突變（rng 有抽但結果同原序無關之退化）
+  assert.ok(
+    rendered.some((r) => r !== POOL.join(">")),
+    `首輪不得全部等於題池原序；實測 ${JSON.stringify(rendered)}`,
+  );
+  // 可重播：同一 seed 兩次建袋 ⇒ 同首輪排列（rng 為唯一變因）
+  assert.deepEqual(
+    firstRoundOf(SEEDS[0] as number),
+    rounds[0],
+    "同一 seed 必須重播同一首輪排列",
   );
 });
