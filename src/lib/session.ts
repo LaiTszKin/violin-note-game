@@ -62,7 +62,7 @@ export function createSession(pool: readonly NoteId[], rng: Rng): Session {
   return {
     current: () => pending(),
     answer: (correct: boolean) => {
-      const q = pending();
+      const q = active; // 只接受已派發（經 current()）之題目；未派發＝無操作
       if (q === null) return;
       active = null;
       if (q.replay) {

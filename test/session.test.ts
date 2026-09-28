@@ -144,3 +144,104 @@ test("REQUEUE_RULES: 錯題 FIFO 各重出恰一次（全在新題之後）；�
     { numRuns: 80 },
   );
 });
+
+// B-f1（Review B follow-up；src 守衛已落）：answer() 只接受經 current() 派發之題目。
+// 未派題之 answer() 必須係無操作——唔消耗題目、唔改任何計分。若 revert 守衛
+// （src/lib/session.ts 之 `const q = active` 改回 `const q = pending()`），本用例必 FAIL：
+// answer()×2 會靜默偷走前兩條新題 ⇒ progress 變 2、current() 已非第 1 條。
+test("ANSWER_BEFORE_DISPATCH: 未經 current() 之 answer() 為無操作（不消耗題目、不改計分）", () => {
+  const pool = Array.from({ length: 6 }, (_, i) => `P${i}`) as NoteId[];
+  const seed = 20_260_928;
+
+  const session = createSession(pool, makeRng(seed));
+  assert.equal(session.progress().answeredFresh, 0);
+
+  // 未派題：answer(true)×2 —— 必須完全無操作
+  session.answer(true);
+  session.answer(false);
+  assert.equal(
+    session.progress().answeredFresh,
+    0,
+    "未經 current() 不得消耗新題",
+  );
+  assert.equal(session.score(), 0, "未派題之應答不得計分");
+  assert.equal(session.stars(), 0);
+  assert.equal(session.streak(), 0);
+  assert.equal(session.finished(), false);
+
+  // 第 1 條＝從未呼叫過 answer() 之對照組之首題（袋未被偷抽）
+  const first = session.current();
+  assert.ok(first, "未完成時 current() 必須非 null");
+  assert.equal(first.replay, false);
+  const control = createSession(pool, makeRng(seed));
+  const controlFirst = control.current();
+  assert.ok(controlFirst);
+  assert.equal(
+    first.noteId,
+    controlFirst.noteId,
+    "首題須＝對照組首題（袋狀態未被消耗）",
+  );
+
+  // 派題後之應答照常運作
+  session.answer(true);
+  control.answer(true);
+  assert.equal(session.progress().answeredFresh, 1);
+  assert.equal(session.score(), 1);
+  assert.equal(session.stars(), 1);
+  assert.equal(session.streak(), 1);
+
+  // 中段未再派題之 answer() 亦為無操作（唔准偷走第 2 條）
+  session.answer(false);
+  session.answer(true);
+  assert.equal(
+    session.progress().answeredFresh,
+    1,
+    "中段未派題之 answer() 不得消耗下一題",
+  );
+  assert.equal(session.score(), 1);
+  assert.equal(session.stars(), 1);
+  assert.equal(session.streak(), 1, "無操作不得改 streak");
+
+  const second = session.current();
+  assert.ok(second);
+  const controlSecond = control.current();
+  assert.ok(controlSecond);
+  assert.equal(second.noteId, controlSecond.noteId, "第 2 條仍＝對照組第 2 條");
+  assert.equal(second.replay, false);
+});
+
+// B-f1（PBT 版）：對任意 seed／題池大小，未派題之 answer() 皆不得改變任何可觀察狀態。
+test("ANSWER_BEFORE_DISPATCH_PROP: 任意 seed 下未派題 answer() 不改變 progress／score／stars／streak", () => {
+  fc.assert(
+    fc.property(
+      fc.integer({ min: 1, max: 1_000_000 }),
+      fc.integer({ min: 2, max: 17 }),
+      (seed, n) => {
+        const pool = Array.from({ length: n }, (_, i) => `P${i}`) as NoteId[];
+        const session = createSession(pool, makeRng(seed));
+        const observe = () => ({
+          progress: session.progress(),
+          score: session.score(),
+          stars: session.stars(),
+          streak: session.streak(),
+          finished: session.finished(),
+        });
+        const before = observe();
+        for (let i = 0; i < 3; i++) session.answer(i % 2 === 0);
+        assert.deepEqual(
+          observe(),
+          before,
+          `seed=${seed}, n=${n}：未派題 answer()×3 不得改變狀態`,
+        );
+        // 首題＝對照組首題（袋不得被偷抽）
+        const control = createSession(pool, makeRng(seed));
+        assert.equal(
+          session.current()?.noteId,
+          control.current()?.noteId,
+          `seed=${seed}, n=${n}：未派題 answer() 不得消耗題目`,
+        );
+      },
+    ),
+    { numRuns: 60 },
+  );
+});
