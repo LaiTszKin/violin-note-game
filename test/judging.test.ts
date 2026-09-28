@@ -136,3 +136,97 @@ test("POSITION_JUDGE: ∈placementsOf 接受（D4/A4/E5 兩奏法都對）；20 
     true,
   );
 });
+
+// RA-4（Review B）：範圍外位置組合必須一律拒絕——mutant「|| answer.finger > 4」曾存活，
+// 因 20 格全掃只覆蓋 finger 0–4 與弦 G/D/A/E。此處補 finger 5／-1／非整數／NaN／±Inf
+// 與非法弦（'B'／'g'／'F'／''／'GG'…）之確定性全掃＋PBT。
+test("POSITION_JUDGE_OUT_OF_RANGE: 範圍外指位與非法弦必須一律拒絕", () => {
+  const GOOD_STRINGS = ["G", "D", "A", "E"] as StringName[];
+  const BAD_FINGERS: number[] = [
+    5,
+    -1,
+    6,
+    5.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ];
+  const BAD_STRINGS: string[] = ["B", "b", "g", "F", "", " ", "GG", "G ", "G3"];
+
+  for (const note of ALL_NOTES) {
+    // 合法弦 × 範圍外指 ⇒ 拒（mutant finger>4 之直接死亡點）
+    for (const f of BAD_FINGERS) {
+      for (const s of GOOD_STRINGS) {
+        assert.equal(
+          isCorrect(note, { kind: "position", string: s, finger: f as Finger }),
+          false,
+          `${note} vs ${s}弦${String(f)}指（範圍外）必須拒絕`,
+        );
+      }
+    }
+    // 非法弦 × 合法指 ⇒ 拒
+    for (const s of BAD_STRINGS) {
+      for (const f of [0, 1, 2, 3, 4] as Finger[]) {
+        assert.equal(
+          isCorrect(note, {
+            kind: "position",
+            string: s as StringName,
+            finger: f,
+          }),
+          false,
+          `${note} vs ${JSON.stringify(s)}弦${f}指（非法弦）必須拒絕`,
+        );
+      }
+    }
+  }
+  // 最小反例（直立斷言；對 mutant「finger > 4 ⇒ 接受」必死）
+  assert.equal(
+    isCorrect("G3", { kind: "position", string: "G", finger: 5 as Finger }),
+    false,
+    "finger 5 必須拒絕",
+  );
+  assert.equal(
+    isCorrect("G3", { kind: "position", string: "G", finger: -1 as Finger }),
+    false,
+    "finger -1 必須拒絕",
+  );
+  assert.equal(
+    isCorrect("G3", { kind: "position", string: "B" as StringName, finger: 0 }),
+    false,
+    "弦 'B' 必須拒絕",
+  );
+  assert.equal(
+    isCorrect("G3", { kind: "position", string: "" as StringName, finger: 0 }),
+    false,
+    "空弦名必須拒絕",
+  );
+  // PBT：任意範圍外組合（弦 ∉ G/D/A/E，或指 ∉ 0–4）⇒ 必拒
+  const arbOutOfRangeCell = fc.oneof(
+    fc.tuple(
+      fc.constantFrom(...GOOD_STRINGS),
+      fc.constantFrom(5, -1, 6, 5.5, Number.NaN, 99),
+    ),
+    fc.tuple(
+      fc.constantFrom("B", "b", "g", "F", "", " ", "GG", "x", "G3"),
+      fc.integer({ min: -8, max: 12 }),
+    ),
+  );
+  fc.assert(
+    fc.property(
+      fc.constantFrom(...ALL_NOTES),
+      arbOutOfRangeCell,
+      (note, [s, f]) => {
+        assert.equal(
+          isCorrect(note, {
+            kind: "position",
+            string: s as StringName,
+            finger: f as Finger,
+          }),
+          false,
+          `${note} vs ${JSON.stringify(s)}弦${String(f)}指（範圍外）必須拒絕`,
+        );
+      },
+    ),
+    { numRuns: 400 },
+  );
+});
