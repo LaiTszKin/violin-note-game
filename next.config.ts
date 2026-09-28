@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Next 16 默認封鎖「非 localhost 主機」對 dev 資源的請求（chunks／HMR）；
+  // 本機測試工具（Playwright、browser tools）以 127.0.0.1 連入，故列入白名單。
+  allowedDevOrigins: ["127.0.0.1"],
 };
 
 export default nextConfig;
