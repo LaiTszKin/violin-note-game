@@ -36,7 +36,7 @@ export function createSession(pool: readonly NoteId[], rng: Rng): Session {
     items.length > 0 ? createBag(items, rng) : null;
 
   let answeredFresh = 0;
-  let replayQueue: NoteId[] = []; // 首答錯之新題，FIFO
+  const replayQueue: NoteId[] = []; // 首答錯之新題，FIFO
   let active: Question | null = null; // current() 已派、未作答之題（保持穩定）
   let freshCorrect = 0; // 首答答對數 → score()
   let totalCorrect = 0; // 答對總數（含重出）→ stars()
