@@ -61,9 +61,11 @@ test("QUERY_PARSE_RULES: 合法值採用；缺/非法 fallback；strings 過濾/
       { level: "custom", strings: "D,A" },
       { mode: "letter", level: "custom", strings: ["D", "A"] },
     ],
+    // 修正紀錄（main agent, 2026-09-28）：原輸入 "B" 唔係琴弦（弦只得 G/D/A/E），
+    // 與同檔 PBT 不變式（strings ⊆ G/D/A/E）自相矛盾；改 "E" 保留過濾＋去重＋弦序之意圖。
     [
-      { level: "custom", strings: "a, D ,D,B,X" },
-      { mode: "letter", level: "custom", strings: ["D", "B"] },
+      { level: "custom", strings: "a, D ,D,E,X" },
+      { mode: "letter", level: "custom", strings: ["D", "E"] },
     ],
     [
       { level: "custom", strings: "X,Y" },
