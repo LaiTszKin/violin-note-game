@@ -167,7 +167,7 @@ export function GameScreen({ config, seed }: GameScreenProps) {
   const question = session.current();
   const displayNote: NoteId | null =
     feedback !== null ? feedback.noteId : (question?.noteId ?? null);
-  const answeredFresh = session.progress().answeredFresh;
+  const { answeredFresh, totalFresh } = session.progress();
   const streak = session.streak();
   const answering = feedback !== null; // 已作答：控件鎖住至下一題
   const finished = feedback === null && session.finished();
@@ -188,7 +188,7 @@ export function GameScreen({ config, seed }: GameScreenProps) {
           <span
             data-testid="progress"
             style={CHIP}
-          >{`${answeredFresh}/${ROUND_SIZE}`}</span>
+          >{`${answeredFresh}/${totalFresh}`}</span>
           <span data-testid="streak" style={CHIP}>{`連擊 ${streak}`}</span>
         </div>
         <button

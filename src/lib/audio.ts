@@ -1,34 +1,13 @@
 // 音高頻率（12 平均律、A4=440Hz）＋ WebAudio 播放器（contextFactory 可注入以便測試）。
-import type { NoteId } from "./notes";
-
-// C4=60、A4=69（MIDI 編號）；用 Record<NoteId, …> 令漏音於型別層被擋。
-const MIDI_OF: Record<NoteId, number> = {
-  G3: 55,
-  A3: 57,
-  B3: 59,
-  C4: 60,
-  D4: 62,
-  E4: 64,
-  F4: 65,
-  G4: 67,
-  A4: 69,
-  B4: 71,
-  C5: 72,
-  D5: 74,
-  E5: 76,
-  F5: 77,
-  G5: 79,
-  A5: 81,
-  B5: 83,
-};
+import { midiOf, type NoteId } from "./notes";
 
 const A4_MIDI = 69;
 const A4_HZ = 440;
 const SEMITONES_PER_OCTAVE = 12;
 
-/** 12 平均律頻率（Hz）：f = 440 × 2^((midi − 69) / 12)。 */
+/** 12 平均律頻率（Hz）：f = 440 × 2^((midi − 69) / 12)；midi 由 notes.ts 之 MIDI 表（單一真相）。 */
 export function frequencyOf(noteId: NoteId): number {
-  return A4_HZ * 2 ** ((MIDI_OF[noteId] - A4_MIDI) / SEMITONES_PER_OCTAVE);
+  return A4_HZ * 2 ** ((midiOf(noteId) - A4_MIDI) / SEMITONES_PER_OCTAVE);
 }
 
 export interface OscillatorLike {

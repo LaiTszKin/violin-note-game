@@ -1,6 +1,6 @@
 // 關卡定義與題池。
 // 規格：.plan/28-09-2026/violin-note-game/PRD.md REQ-levels-1（D8 關卡）。
-import type { NoteId, StringName } from "./notes";
+import { NOTES, type NoteId, type StringName } from "./notes";
 
 export type Mode = "letter" | "position";
 export type LevelId = "G" | "D" | "A" | "E" | "mixed" | "custom";
@@ -14,12 +14,22 @@ export interface PlayConfig {
 /** 固定弦序：題池、URL `strings` 一律以此排序（G→D→A→E）。 */
 export const STRING_ORDER: readonly StringName[] = ["G", "D", "A", "E"];
 
-/** 各弦 0–4 指音高（空弦先行）＝PRD 對照表（G: G3…D4｜D: D4…A4｜A: A4…E5｜E: E5…B5）。 */
+/**
+ * 單弦 0–4 指音高（空弦先行）＝由 notes.ts 題庫（NOTES）衍生，非獨立副本；
+ * 單一真相＝notes.ts（REQ-model-1），改音高只須改該檔。
+ */
+function pitchesOfString(string: StringName): readonly NoteId[] {
+  return NOTES.filter((item) => item.string === string)
+    .sort((a, b) => a.finger - b.finger)
+    .map((item) => item.noteId);
+}
+
+/** 各弦 0–4 指音高（空弦先行）＝notes.ts 衍生表（G: G3…D4｜D: D4…A4｜A: A4…E5｜E: E5…B5）。 */
 export const STRING_NOTES: Record<StringName, readonly NoteId[]> = {
-  G: ["G3", "A3", "B3", "C4", "D4"],
-  D: ["D4", "E4", "F4", "G4", "A4"],
-  A: ["A4", "B4", "C5", "D5", "E5"],
-  E: ["E5", "F5", "G5", "A5", "B5"],
+  G: pitchesOfString("G"),
+  D: pitchesOfString("D"),
+  A: pitchesOfString("A"),
+  E: pitchesOfString("E"),
 };
 
 /** 開始頁之預設關卡掣（custom 由自選 checkbox 表達，不在此列）。 */

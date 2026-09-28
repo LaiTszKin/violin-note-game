@@ -75,12 +75,7 @@ export function Fingerboard({
   onPick,
 }: FingerboardProps) {
   return (
-    <div
-      data-testid="fingerboard"
-      role="group"
-      aria-label="指板：揀出呢個音喺邊度按"
-      style={BOARD}
-    >
+    <div role="group" aria-label="指板：揀出呢個音喺邊度按" style={BOARD}>
       {STRING_ORDER.map((stringName) => (
         <Fragment key={stringName}>
           <div style={STRING_LABEL}>{`${stringName}弦`}</div>
